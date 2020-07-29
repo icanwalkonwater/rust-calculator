@@ -1,0 +1,9 @@
+<grammar> ::= <add> | <<eof>>
+<add>     ::= <mul> [ ( ( "+" | "-" ) <mul> ) + ]
+<mul>     ::= <pow> [ ( ( "*" | "/" ) <pow> | <pow> <pow> ) + ]
+<pow>     ::= <unary> [ ( "**" <unary> ) + ]
+<unary>   ::= <atom> | "+" <atom> | "-" <atom>
+<atom>    ::= <literal> | "(" <add> ")"
+<literal> ::= <number> | "e" | "pi"
+<number>  ::= <digits> [ "." [ <digits> ] ] | "." <digits>
+<digits>  ::= "0" .. "9"

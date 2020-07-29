@@ -1,68 +1,34 @@
 //! # AST module
 //! Contains the structures used to represent the grammar.
 
-#[derive(Debug, PartialEq)]
-pub struct Expr {
-    pub inner: Add,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Add {
-    pub lhs: Mul,
-    pub op: Option<AddOp>,
-    pub rhs: Option<Box<Add>>,
-}
-
-impl Add {
-    pub fn small(lhs: Mul) -> Self {
-        Self {
-            lhs,
-            op: None,
-            rhs: None,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum AddOp {
-    Add,
-    Sub,
-}
-
-#[derive(Debug, PartialEq)]
-pub struct Mul {
-    pub lhs: Atom,
-    pub op: Option<MulOp>,
-    pub rhs: Option<Box<Mul>>,
-}
-
-impl Mul {
-    pub fn small(lhs: Atom) -> Self {
-        Self {
-            lhs,
-            op: None,
-            rhs: None,
-        }
-    }
-}
-
-#[derive(Debug, PartialEq)]
-pub enum MulOp {
-    Mul,
-    Div,
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Atom {
-    Literal(Literal),
-    Add(Box<Add>),
-}
-
-#[derive(Debug, PartialEq)]
-pub enum Literal {
-    Digit(Digit),
+#[derive(PartialEq, Clone, Debug)]
+pub enum Expr {
+    BinOpLeft(Box<Expr>, BinOpLeftType, Box<Expr>),
+    BinOpRight(Box<Expr>, BinOpRightType, Box<Expr>),
+    UnaryOp(UnaryOpType, Box<Expr>),
+    Paren(Box<Expr>),
+    Number(Number),
     E,
     Pi,
 }
 
-pub type Digit = i64;
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub enum BinOpLeftType {
+    Add,
+    Sub,
+    Mul,
+    Div,
+}
+
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub enum BinOpRightType {
+    Pow,
+}
+
+#[derive(PartialEq, Copy, Clone, Debug)]
+pub enum UnaryOpType {
+    Negate,
+    Noop,
+}
+
+pub type Number = f32;
