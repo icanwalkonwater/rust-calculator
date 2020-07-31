@@ -30,5 +30,7 @@ pub mod errors {
         MismatchedParenthesis,
         #[error("Too much operands in the expression !")]
         TooMuchOperands,
+        #[error("Not enough operands in the expression !")]
+        NotEnoughOperands,
     }
 }

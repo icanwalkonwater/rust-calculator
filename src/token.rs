@@ -74,6 +74,14 @@ impl Token {
     }
 
     /// Assumes [Token#is_op] returned true.
+    pub fn is_unary_op(&self) -> bool {
+        match self {
+            Self::UnaryPlus | Self::UnaryMinus => true,
+            _ => false,
+        }
+    }
+
+    /// Assumes [Token#is_op] returned true.
     pub fn is_left_assoc(&self) -> bool {
         match self {
             Self::Plus | Self::Minus | Self::Times | Self::Pow => true,

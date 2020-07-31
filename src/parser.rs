@@ -2,12 +2,12 @@
 //! Contains the functions used to parse the grammar.
 
 use std::iter::Peekable;
+use std::string::ParseError;
 use std::vec::IntoIter;
 
-use crate::ast::Expr;
-use crate::errors::{Result, ParserError};
+use crate::ast::{Expr, UnaryOpType};
+use crate::errors::{ParserError, Result};
 use crate::token::Token;
-use std::string::ParseError;
 
 pub struct Parser {
     token_stream: Peekable<IntoIter<Token>>,
@@ -110,6 +110,27 @@ impl Parser {
 
     fn append_op(&mut self, op: Token) -> Result<()> {
         todo!("Build AST here with the output queue");
+        todo!("Des tests aussi stp");
+        if op.is_unary_op() {
+            let operand = self
+                .output
+                .pop()
+                .ok_or_else(ParserError::NotEnoughOperands)?;
+            let op = match op {
+                Token::UnaryMinus => UnaryOpType::Negate,
+                _ => UnaryOpType::Noop,
+            };
+
+            self.output.push(Expr::UnaryOp(op, Box::new(operand)));
+        } else {
+            /* else if op.is_bin_op()*/
+            if op.is_left_assoc() {
+                todo!("+ - * /")
+            } else {
+                todo!("**")
+            }
+        }
+
         Ok(())
     }
 }
