@@ -6,7 +6,7 @@ Use with `noglob` to avoid unwanted shell expansion.
 Example:
 ```bash
 noglob cargo run 1+2*3/7
-# Result: 1.8571429
-noglob cargo run 2 * pi
-# Result: 6.2831855
+# 1.8571429
+noglob cargo run 2pi
+# 6.2831855
 ```

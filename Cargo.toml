@@ -1,8 +1,10 @@
 [package]
 name = "rust-calculator"
-version = "0.1.0"
+version = "1.0.0"
+description = "A simple mathematical epxression parser and evaluator."
 authors = ["Lucas Malandrino <lucas.malandrino@gmail.com>"]
 edition = "2018"
+license = "MIT"
 
 [dependencies]
 thiserror = "1.0.20"
