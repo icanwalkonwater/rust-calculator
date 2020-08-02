@@ -24,6 +24,7 @@ use std::iter::Peekable;
 use std::str::Chars;
 
 use crate::errors::{ParserError, Result};
+use std::fmt::{Debug, Display, Formatter};
 
 #[derive(PartialEq, Debug, Copy, Clone)]
 pub enum Token {
@@ -32,7 +33,7 @@ pub enum Token {
     UnaryPlus,
     UnaryMinus,
     Times,
-    Pow,
+    TimesTimes,
     Slash,
     ParenStart,
     ParenEnd,
@@ -41,6 +42,12 @@ pub enum Token {
     Number(f32),
 
     Ignore,
+}
+
+impl Display for Token {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        Debug::fmt(self, f)
+    }
 }
 
 // Meaning of these tokens
@@ -60,7 +67,7 @@ impl Token {
             | Self::UnaryMinus
             | Self::Times
             | Self::Slash
-            | Self::Pow => true,
+            | Self::TimesTimes => true,
             _ => false,
         }
     }
@@ -68,7 +75,7 @@ impl Token {
     /// Assumes [Token#is_op] returned true.
     pub fn is_bin_op(&self) -> bool {
         match self {
-            Self::Plus | Self::Minus | Self::Times | Self::Slash | Self::Pow => true,
+            Self::Plus | Self::Minus | Self::Times | Self::Slash | Self::TimesTimes => true,
             _ => false,
         }
     }
@@ -84,7 +91,7 @@ impl Token {
     /// Assumes [Token#is_op] returned true.
     pub fn is_left_assoc(&self) -> bool {
         match self {
-            Self::Plus | Self::Minus | Self::Times | Self::Pow => true,
+            Self::Plus | Self::Minus | Self::Times => true,
             _ => false,
         }
     }
@@ -94,7 +101,8 @@ impl Token {
         match self {
             Self::Plus | Self::Minus => 1,
             Self::Times | Self::Slash => 2,
-            Self::Pow => 3,
+            Self::TimesTimes => 3,
+            Self::UnaryPlus | Self::UnaryMinus => 4,
             _ => 0,
         }
     }
@@ -103,6 +111,13 @@ impl Token {
         match self {
             t if t.is_op() => true,
             Self::ParenStart => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_paren(&self) -> bool {
+        match self {
+            Self::ParenStart | Self::ParenEnd => true,
             _ => false,
         }
     }
@@ -141,7 +156,7 @@ pub fn tokenize(source: String) -> Result<Vec<Token>> {
                 if let Some('*') = iterator.peek() {
                     // Can safely unwrap
                     iterator.next().unwrap();
-                    Token::Pow
+                    Token::TimesTimes
                 } else {
                     Token::Times
                 }
@@ -172,6 +187,9 @@ pub fn tokenize(source: String) -> Result<Vec<Token>> {
             tokens.push(token)
         }
     }
+
+    // Expand implicit mul
+    tokens = expand_implicit_mul(tokens);
 
     Ok(tokens)
 }
@@ -217,6 +235,33 @@ fn tokenize_number(iterator: &mut Peekable<Chars>, first_digit: char) -> Result<
     Ok(Token::Number(number))
 }
 
+/// Insert implicit multiplications between atomic parts.
+/// Example of when an implicit mul will be inserted.
+/// `1(`, `)1`, `)(`, `2pi`
+fn expand_implicit_mul(mut tokens: Vec<Token>) -> Vec<Token> {
+    let mut insert_indices = Vec::new();
+
+    let mut first_index = 0;
+    for window in tokens.windows(2) {
+        let first = window[0];
+        let second = window[1];
+
+        if first.is_atom() || first == Token::ParenEnd {
+            if second.is_atom() || second == Token::ParenStart {
+                insert_indices.push(first_index + 1);
+            }
+        }
+
+        first_index += 1;
+    }
+
+    for i in insert_indices.into_iter().rev() {
+        tokens.insert(i, Token::Times);
+    }
+
+    tokens
+}
+
 #[cfg(test)]
 mod tests {
     use crate::token::{tokenize, Token};
@@ -227,7 +272,8 @@ mod tests {
         assert_eq!(tokens, vec![Token::Number(12.345)]);
 
         let tokens = tokenize("pie".into()).unwrap();
-        assert_eq!(tokens, vec![Token::Pi, Token::E,]);
+        // Note: implicit mul kicks in
+        assert_eq!(tokens, vec![Token::Pi, Token::Times, Token::E,]);
 
         let tokens = tokenize("12".into()).unwrap();
         assert_eq!(tokens, vec![Token::Number(12.0)]);
@@ -255,7 +301,7 @@ mod tests {
                 Token::Minus,
                 Token::Times,
                 Token::Slash,
-                Token::Pow,
+                Token::TimesTimes,
                 Token::Times,
             ]
         )
@@ -271,5 +317,78 @@ mod tests {
     fn tokenize_fail() {
         assert!(tokenize("abc".into()).is_err());
         assert!(tokenize("%".into()).is_err());
+    }
+
+    #[test]
+    fn implicit_mul() {
+        let tokens = tokenize("1(2)".into()).unwrap();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::Number(1.),
+                Token::Times,
+                Token::ParenStart,
+                Token::Number(2.),
+                Token::ParenEnd
+            ]
+        );
+
+        let tokens = tokenize("(1)(2)".into()).unwrap();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::ParenStart,
+                Token::Number(1.),
+                Token::ParenEnd,
+                Token::Times,
+                Token::ParenStart,
+                Token::Number(2.),
+                Token::ParenEnd
+            ]
+        );
+
+        let tokens = tokenize("1pi".into()).unwrap();
+        assert_eq!(tokens, vec![Token::Number(1.), Token::Times, Token::Pi,]);
+
+        let tokens = tokenize("(1)2".into()).unwrap();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::ParenStart,
+                Token::Number(1.),
+                Token::ParenEnd,
+                Token::Times,
+                Token::Number(2.),
+            ]
+        );
+    }
+
+    #[test]
+    fn implicit_mul_in_the_wild() {
+        let tokens = tokenize("(1+2)(1-2)(2pi/4)".into()).unwrap();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::ParenStart,
+                Token::Number(1.),
+                Token::Plus,
+                Token::Number(2.),
+                Token::ParenEnd,
+                Token::Times,
+                Token::ParenStart,
+                Token::Number(1.),
+                Token::Minus,
+                Token::Number(2.),
+                Token::ParenEnd,
+                Token::Times,
+                Token::ParenStart,
+                Token::Number(2.),
+                Token::Times,
+                Token::Pi,
+                Token::Slash,
+                Token::Number(4.),
+                Token::ParenEnd,
+            ]
+        )
     }
 }

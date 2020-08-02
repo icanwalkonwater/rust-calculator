@@ -3,25 +3,25 @@
 
 #[derive(PartialEq, Clone, Debug)]
 pub enum Expr {
-    BinOpLeft(Box<Expr>, BinOpLeftType, Box<Expr>),
-    BinOpRight(Box<Expr>, BinOpRightType, Box<Expr>),
+    BinOp(Box<Expr>, BinOpType, Box<Expr>),
     UnaryOp(UnaryOpType, Box<Expr>),
-    Paren(Box<Expr>),
     Number(Number),
     E,
     Pi,
 }
 
+impl Expr {
+    pub fn boxed(self) -> Box<Self> {
+        Box::new(self)
+    }
+}
+
 #[derive(PartialEq, Copy, Clone, Debug)]
-pub enum BinOpLeftType {
+pub enum BinOpType {
     Add,
     Sub,
     Mul,
     Div,
-}
-
-#[derive(PartialEq, Copy, Clone, Debug)]
-pub enum BinOpRightType {
     Pow,
 }
 
